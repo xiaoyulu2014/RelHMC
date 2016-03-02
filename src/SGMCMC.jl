@@ -2,7 +2,7 @@ module SGMCMC
 
     abstract SamplerState
 
-    export SamplerState,HMCState,RelHMCState,SGRelHMCState, sample!
+    export SamplerState,HMCState,RelHMCState,SGRelHMCState, SGNHTRelHMCState ,sample!
 
     type HMCState <: SamplerState
         x::Array{Float64}
@@ -36,8 +36,8 @@ module SGMCMC
         s.p += (iter<niters ? stepsize : .5*stepsize) * grad(s.x) # two leapfrog steps rolled in one unless at the end.
       end
 
-      logaccratio = llik(s.x) - llik(curx) -.5*sum((s.p.*s.p - curp.*curp)./mass)[1]
-      if 0.0 > logaccratio - log(rand())
+      logaccratio = llik(s.x) - llik(curx) -.5*sum((s.p.*s.p - curp.*curp)./mass)
+     if 0.0 > (logaccratio - log(rand()))[1]
           #reject
           s.x = curx
           s.p = curp
@@ -96,7 +96,7 @@ module SGMCMC
       ke = sum(mass.*c.^2 .* sqrt(s.p.^2 ./(mass.*c).^2 +1))[1]
 
       logaccratio = llik(s.x) - llik(curx) - ke + cur_ke
-      if 0.0 > logaccratio - log(rand())
+      if 0.0 > (logaccratio - log(rand()))[1]
           #reject
           s.x = curx
           s.p = curp
@@ -189,4 +189,60 @@ module SGMCMC
       end
       s
     end
+
+
+
+   type SGNHTRelHMCState <: SamplerState
+        x::Array{Float64}
+        p::Array{Float64}
+        zeta::Array{Float64,1}
+
+        niters::Int64
+        stepsize::Float64
+        mass::Array{Float64,1}
+        c::Array{Float64,1}
+        D::Array{Float64,1}
+        Best::Array{Float64,1} # variance estimator Bhat_t in Levy's notes.
+        independent_momenta::Bool
+        function SGNHTRelHMCState(x::Array{Float64};stepsize = 0.001, p=:none, mass=[1.0],niters=10,c=[1.0], D=[1.0], Best=[0.0], zeta=[0.0], independent_momenta=false)
+            if isa(mass,Number)
+              mass = mass * ones(length(x))
+            end
+            if p == :none
+                p = sample_rel_p(mass, c, length(x))
+            end
+        new(x,p,zeta,niters,stepsize,mass,c,D,Best,independent_momenta)
+        end
+    end
+
+
+    function sample!(s::SGNHTRelHMCState, llik, sgrad)
+      # stochastic gradient relativistic langevin dynamics
+      # using naive Euler updates.
+      D = s.D
+      niters = s.niters
+      stepsize = s.stepsize
+      Best = s.Best
+      zeta = s.zeta
+
+      m = s.mass
+      c = s.c
+      for iter=1:s.niters
+        #M(p)
+        tmp = m .* sqrt(s.p's.p ./ (m.^2 .* c.^2) + 1)
+        #gradient of the theta(position)
+        p_grad = zeta.*s.p./tmp
+
+        # equation 21 in Levy's notes
+        n = sqrt(stepsize.*(2D.-stepsize.*Best)).*randn(length(s.x)) # noise term
+        s.p[:] += stepsize.*(sgrad(s.x)-p_grad) + n
+        #update tmp
+        tmp = m .* sqrt(s.p's.p ./ (m.^2 .* c.^2) + 1)
+        # equation 22 in Levy's notes
+        s.x[:] += stepsize.*s.p./tmp
+        #thermostats
+        zeta[:] += stepsize.* (s.p'*s.p./length(s.x).*(1./tmp.^2 + 1./(tmp.^3 .* c.^2)) - 1./tmp)
+      end
+      s
+   end
 end
