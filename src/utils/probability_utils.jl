@@ -978,7 +978,7 @@ function poisson_logpdf(k, lambda)
     k*log(lambda) - lambda - lfact(k)
 end
 
-function log_logistic{T<:AbstractFloat}(effect::T, y::T)
+function log_logistic{T<:Real}(effect::T, y::T)
     value = 0.0
     value = -(one(T)-y)*effect - log(one(T)+exp(-effect))
     if isinf(value)

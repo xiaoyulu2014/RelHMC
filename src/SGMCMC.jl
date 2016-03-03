@@ -170,11 +170,11 @@ module SGMCMC
       niters = s.niters
       stepsize = s.stepsize
       Best = s.Best
-
       m = s.mass
       c = s.c
+     
       for iter=1:s.niters
-
+        
         p_grad = s.independent_momenta ? stepsize .* s.p ./ (m .* sqrt(s.p.*s.p ./ (m.^2 .* c.^2) + 1)) : stepsize .* s.p ./ (m .* sqrt(s.p's.p ./ (m.^2 .* c.^2) + 1))
 
         # equation 21 in Levy's notes
@@ -186,7 +186,8 @@ module SGMCMC
 
         # equation 22 in Levy's notes
         s.x[:] += p_grad
-      end
+        
+    end
       s
     end
 
@@ -196,7 +197,7 @@ module SGMCMC
         x::Array{Float64}
         p::Array{Float64}
         zeta::Array{Float64,1}
-
+    
         niters::Int64
         stepsize::Float64
         mass::Array{Float64,1}
@@ -227,22 +228,26 @@ module SGMCMC
 
       m = s.mass
       c = s.c
+    
       for iter=1:s.niters
+           
         #M(p)
         tmp = m .* sqrt(s.p's.p ./ (m.^2 .* c.^2) + 1)
         #gradient of the theta(position)
         p_grad = zeta.*s.p./tmp
-
+        
         # equation 21 in Levy's notes
         n = sqrt(stepsize.*(2D.-stepsize.*Best)).*randn(length(s.x)) # noise term
-        s.p[:] += stepsize.*(sgrad(s.x)-p_grad) + n
+        s.p[:] += stepsize.*(sgrad(s.x)-p_grad) + n 
         #update tmp
         tmp = m .* sqrt(s.p's.p ./ (m.^2 .* c.^2) + 1)
         # equation 22 in Levy's notes
         s.x[:] += stepsize.*s.p./tmp
         #thermostats
-        zeta[:] += stepsize.* (s.p'*s.p./length(s.x).*(1./tmp.^2 + 1./(tmp.^3 .* c.^2)) - 1./tmp)
-      end
-      s
+        zeta[:] += stepsize.* (s.p'*s.p./length(s.x).*(1./tmp.^2 + 1./(tmp.^3 .* c.^2)) - 1./tmp)  
+          
+       end
+        
+       s
    end
 end
