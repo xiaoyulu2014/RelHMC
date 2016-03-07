@@ -1,13 +1,14 @@
-push!(LOAD_PATH,"/homes/xlu/Documents/RelHMC/src")
-push!(LOAD_PATH,"/homes/xlu/Documents/RelHMC/models/")
-using SGMCMC
-using DataModel
-using Banana
-using PyPlot
-import StatsBase
-dm = BananaModel()
-shmc = HMCState(zeros(2),stepsize=0.1)
-function plot_contour(f, range_x, range_y)
+@everywhere push!(LOAD_PATH,"/homes/xlu/Documents/RelHMC/src")
+@everywhere push!(LOAD_PATH,"/homes/xlu/Documents/RelHMC/models/")
+@everywhere using SGMCMC
+@everywhere using DataModel
+@everywhere using Banana
+@everywhere using PyPlot
+@everywhere import StatsBase.autocor
+
+
+@everywhere dm = BananaModel()
+@everywhere function plot_contour(f, range_x, range_y)
     grid_x = [i for i in range_x, j in range_y]
     grid_y = [j for i in range_x, j in range_y]
 
@@ -15,41 +16,65 @@ function plot_contour(f, range_x, range_y)
 
     PyPlot.contour(grid_x', grid_y', grid_f', 1)
 end
-function run(s::SamplerState,dm::AbstractDataModel;num_iterations=1000, final_plot=false)
+@everywhere function run(s::SamplerState,dm::AbstractDataModel;num_iterations=1000, final_plot=false)
     grad = getgrad(dm)
     llik = getllik(dm)
     samples = zeros(num_iterations, length(s.x))
     zeta = zeros(num_iterations)
-    ESS = zeros(num_iterations,length(s.x))
     for i = 1:num_iterations
 
         sample!(s,llik,grad)
-
         samples[i,:] = s.x
         if typeof(s) <: SGMCMC.SGNHTRelHMCState  zeta[i] = s.zeta[1]  end
-        arf = StatsBase.autocor(samples[1:i,:])
-        ESS[i,:] = [i/(1+2*sum(arf[:,j])) for j=1:length(s.x)]
     end
      
     if final_plot
         if length(s.x) == 2
-           # figure()
+            figure()
             PyPlot.clf()
             llik(x,y) = llik([x,y])
-            subplot(131);plot_contour(llik, -5:.05:6, -1:.05:32)
-	    eps = s.stepsize
+           # subplot(131);
+	    plot_contour(llik, -5:.05:6, -1:.05:32)
             PyPlot.scatter(samples[:,1], samples[:,2]);
-            subplot(132)
-            plot(ESS[:,1]);plot(ESS[:,2]);title("ESS")
-            subplot(133)
-            plot(samples[:,1]);plot(samples[:,2]);title("traceplots of components")
+            #plot(samples[:,1]);plot(samples[:,2]);title("traceplots of components")
         end
     end
-
-    samples,zeta    
+    samples
 end
 
-shmc = HMCState(zeros(2),stepsize=0.1);hmc = run(shmc,dm,final_plot=true);
+##function to plot ESS as the number of iterations
+@everywhere function ESS_func(s::Array;plot=false)
+	n,d=size(s)
+	ESS=Array(Float64,n,d)
+	for i=1:n
+       	   arf = StatsBase.autocor(s[1:i,:])
+  	   ESS[i,:] = [i/(1+2*sum(arf[:,j])) for j=1:2]
+	end
+	if plot  plot(ESS) end
+	return(ESS)
+end
+
+
+
+stepsizevec = linspace(0.001,0.5,32);ESS=SharedArray(Float64,length(stepsizevec),2);rESS=SharedArray(Float64,length(stepsizevec),2)
+@sync @parallel for i=1:length(stepsizevec)
+	shmc = HMCState(zeros(2),stepsize=stepsizevec[i]);
+	hmc = run(shmc,dm,num_iterations=1000000, final_plot=false)
+        arf = StatsBase.autocor(hmc)
+	ESS[i,:] = [1000000/(1+2*sum(arf[:,j])) for j=1:size(hmc,2)]
+end
+
+outfile=open("banana_ESS","a") #append to file
+    println(outfile,"ESS=",ESS,"; stepsizevec=",stepsizevec)
+close(outfile)
+
+@sync @parallel for i=1:length(stepsizevec)
+	srhmc = RelHMCState(zeros(2),stepsize=stepsizevec[i]);
+	rhmc = run(srhmc,dm,num_iterations=1000000, final_plot=false)
+        arf = StatsBase.autocor(rhmc)
+	ESS[i,:] = [1000000/(1+2*sum(arf[:,j])) for j=1:size(rhmc,2)]
+end
+
 srhmc = RelHMCState(zeros(2),stepsize=0.1);rhmc = run(srhmc,dm,final_plot=true);
 ssgrhmc = SGRelHMCState(zeros(2),stepsize=0.1);sgrhmc = run(ssgrhmc, dm, final_plot=true);
 ssgrnhthmc = SGNHTRelHMCState(zeros(2),stepsize=0.1);sgrnhthmc = run(ssgrnhthmc, dm, final_plot=true)
@@ -59,9 +84,8 @@ function traceplot(samplestats)
 		res = run(samplestats,dm,final_plot=false);
 		plot(res[1][:,1])
 	end
-	title("traceplots pf x[1], RHMC for muptiple chains")
 end
-
+title("traceplots pf x[1], SGRHMC for muptiple chains")
 
 
 function myani(res)
