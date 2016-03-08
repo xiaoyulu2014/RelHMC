@@ -75,6 +75,11 @@ close(outfile)
 	ESS[i,:] = [1000000/(1+2*sum(arf[:,j])) for j=1:size(rhmc,2)]
 end
 
+
+
+
+#=
+
 srhmc = RelHMCState(zeros(2),stepsize=0.1);rhmc = run(srhmc,dm,final_plot=true);
 ssgrhmc = SGRelHMCState(zeros(2),stepsize=0.1);sgrhmc = run(ssgrhmc, dm, final_plot=true);
 ssgrnhthmc = SGNHTRelHMCState(zeros(2),stepsize=0.1);sgrnhthmc = run(ssgrnhthmc, dm, final_plot=true)
@@ -100,6 +105,7 @@ function myani(res)
 	end
 end
 
+=#
 
 
 
