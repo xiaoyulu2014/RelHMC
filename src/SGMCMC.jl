@@ -36,7 +36,7 @@ module SGMCMC
         s.p += (iter<niters ? stepsize : .5*stepsize) * grad(s.x) # two leapfrog steps rolled in one unless at the end.
       end
 
-      logaccratio = llik(s.x) - llik(curx) -.5*sum((s.p.*s.p - curp.*curp)./mass)
+      logaccratio = min(llik(s.x) - llik(curx) -.5*sum((s.p.*s.p - curp.*curp)./mass),1)
      if 0.0 > (logaccratio - log(rand()))[1]
           #reject
           s.x = curx
@@ -95,7 +95,7 @@ module SGMCMC
       cur_ke = sum(mass.*c.^2 .* sqrt(curp.^2 ./(mass.*c).^2 +1))[1]
       ke = sum(mass.*c.^2 .* sqrt(s.p.^2 ./(mass.*c).^2 +1))[1]
 
-      logaccratio = llik(s.x) - llik(curx) - ke + cur_ke
+      logaccratio = min(llik(s.x) - llik(curx) - ke + cur_ke,1)
       if 0.0 > (logaccratio - log(rand()))[1]
           #reject
           s.x = curx

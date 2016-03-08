@@ -1,7 +1,7 @@
 @everywhere push!(LOAD_PATH,"/homes/xlu/Documents/RelHMC/src")
 @everywhere push!(LOAD_PATH,"/homes/xlu/Documents/RelHMC/models/")
-@everywhere push!(LOAD_PATH,"/Users/Xiaoyu Lu/Documents/RelHMC/src")
-@everywhere push!(LOAD_PATH,"/Users/Xiaoyu Lu/Documents/RelHMC/models/")
+#@everywhere push!(LOAD_PATH,"/Users/Xiaoyu Lu/Documents/RelHMC/src")
+#@everywhere push!(LOAD_PATH,"/Users/Xiaoyu Lu/Documents/RelHMC/models/")
 @everywhere using SGMCMC
 @everywhere using DataModel
 @everywhere using Banana
@@ -57,23 +57,69 @@ end
 	return(ESS)
 end
 
-cvec=linspace(0.1,2,10);mvec=linspace(0.1,10,10);accvec=Array(Float64,10,10)
-for i=1:10
-  for j=1:10
-  srhmc = RelHMCState(zeros(2),stepsize=0.5,c = cvec[i],mass=mvec[j]);
-  rhmc,raccratio = run(srhmc,dm,num_iterations=10000, final_plot=false)
+
+##examine the effect of m and c for rHMC
+@everywhere cvec=linspace(0.01,10.0,15);@everywhere mvec=linspace(0.01,5.0,15);
+accvec=SharedArray(Float64,15,15);ESSvec=SharedArray(Float64,15,15)
+@sync @parallel for i=1:15
+  for j=1:15
+  srhmc = RelHMCState(zeros(2),stepsize=0.1,c = cvec[i],mass=mvec[j]);
+  rhmc,raccratio = run(srhmc,dm,num_iterations=1000000, final_plot=false)
   accvec[i,j]=mean(raccratio)
+  arf = StatsBase.autocor(rhmc)
+  ESSvec[i,j]= (1000000/(1+2*sum(arf[:,1]))+1000000/(1+2*sum(arf[:,2])))/2
+  end
 end
+
+
+for i=1:5
+       m=round(mvec[i],2)
+       plot(cvec,accvec[:,i],label="m = $m")
 end
+legend(loc="lower left")
+xlabel("c");
+title("acceptance ratio vs c for different m, rHMC")
+
+for i=1:10
+       c=round(cvec[i],2)
+       plot(mvec,accvec[i,:][:],label="c = $c")
+end
+legend(loc="lower right")
+xlabel("m");
+title("acceptance ratio vs m for different c, rHMC")
+
+for i=1:15
+       c=round(cvec[i],2)
+       plot(mvec,ESSvec[i,:][:],label="c = $c")
+end
+legend(loc="upper right")
+xlabel("m");
+title("ESS vs m for different c, rHMC")
+
+for i=1:10
+       m=round(mvec[i],2)
+       plot(cvec,ESSvec[:,i],label="m = $m")
+end
+legend(loc="upper left")
+xlabel("c");
+title("ESS vs c for different m, rHMC")
+
+#=outfile=open("rhmc_mc","a") #append to file
+    println(outfile,"accvec=",accvec,"; ESSvec=",ESSvec, "; cvec=", cvec, "; mvec=", mvec)
+close(outfile)
+=#
+
+
 
 mvec=linspace(0.1,10,10);accvec=Array(Float64,10)
 for i=1:10
   srhmc = RelHMCState(zeros(2),stepsize=0.5,mass=mvec[i]);
-  rhmc,raccratio = run(srhmc,dm,num_iterations=10000, final_plot=false)
+  rhmc,raccratio = run(srhmc,dm,num_iterations=1000000, final_plot=false)
   accvec[i]=mean(raccratio)
 end
 
 
+##examine the effect of stepsize
 stepsizevec = linspace(0.001,0.5,32);ESS=SharedArray(Float64,length(stepsizevec),2);accratiovec=SharedArray(Float64,length(stepsizevec))
 @sync @parallel for i=1:length(stepsizevec)
 	shmc = HMCState(zeros(2),stepsize=stepsizevec[i]);
