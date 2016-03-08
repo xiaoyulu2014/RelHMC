@@ -134,12 +134,19 @@ stepsizevec = linspace(0.001,0.5,32);ESS=SharedArray(Float64,length(stepsizevec)
 @sync @parallel for i=1:length(stepsizevec)
 	shmc = HMCState(zeros(2),stepsize=stepsizevec[i]);
 	hmc,accratio = run(shmc,dm,num_iterations=1000000, final_plot=false)
+  accratio[accratio.>1] = 1;
   arf = StatsBase.autocor(hmc)
 	ESS[i,:] = [1000000/(1+2*sum(arf[:,j])) for j=1:size(hmc,2)]
   accratiovec[i] = exp(mean(accratio))
 end
-plot(stepsizevec,ESS);
-plot(stepsizevec,accratiovec);
+plot(stepsizevec,ESS);title("ESS vs stepsize, Newtonian HMC")
+plot(stepsizevec,accratiovec);title("acceptance prob vs stepsize, Newtonian HMC")
+
+outfile=open("hmc_stepsize","a") #append to file
+    println(outfile,"ESS=",ESS,"; accratiovec=",accratiovec, "; stepsizevec=", stepsizevec)
+close(outfile)
+
+
 
 stepsizevec = linspace(0.001,0.5,32);rESS=SharedArray(Float64,length(stepsizevec),2);raccratiovec=SharedArray(Float64,length(stepsizevec))
 @sync @parallel for i=1:length(stepsizevec)
