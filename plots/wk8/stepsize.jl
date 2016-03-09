@@ -108,7 +108,7 @@ rESS=SharedArray(Float64,length(nitersvec),2);raccratiovec=SharedArray(Float64,l
 	rhmc,raccratio = run(srhmc,dm,num_iterations=1000000, final_plot=false)
   arf = StatsBase.autocor(rhmc)
 	rESS[i,:] = [1000000/(1+2*sum(arf[:,j])) for j=1:size(rhmc,2)]
-  raccratiovec[i] = mean(raccratio)
+  raccratiovec[i] = median(raccratio)
 end
 
 outfile=open("rhmc_niters","a") #append to file
