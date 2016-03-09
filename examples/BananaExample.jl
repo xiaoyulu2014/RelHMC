@@ -1,7 +1,7 @@
 @everywhere push!(LOAD_PATH,"/homes/xlu/Documents/RelHMC/src")
 @everywhere push!(LOAD_PATH,"/homes/xlu/Documents/RelHMC/models/")
-@everywhere push!(LOAD_PATH,"/Users/Xiaoyu Lu/Documents/RelHMC-group/src")
-@everywhere push!(LOAD_PATH,"/Users/Xiaoyu Lu/Documents/RelHMC-group/models/")
+#@everywhere push!(LOAD_PATH,"/Users/Xiaoyu Lu/Documents/RelHMC/src")
+#@everywhere push!(LOAD_PATH,"/Users/Xiaoyu Lu/Documents/RelHMC/models/")
 @everywhere using SGMCMC
 @everywhere using DataModel
 @everywhere using Banana
@@ -26,8 +26,7 @@ end
     zeta = zeros(num_iterations)
     for i = 1:num_iterations
 
-       # accratio[i]=sample!(s,llik,grad)[2]
-        sample!(s,llik,grad)
+        accratio[i]=sample!(s,llik,grad)[2]
         samples[i,:] = s.x
         if typeof(s) <: SGMCMC.SGNHTRelHMCState  zeta[i] = s.zeta[1]  end
     end
@@ -43,7 +42,7 @@ end
             #plot(samples[:,1]);plot(samples[:,2]);title("traceplots of components")
         end
     end
-    samples#,accratio
+    samples,accratio
 end
 
 ##function to plot ESS as the number of iterations
@@ -58,7 +57,7 @@ end
 	return(ESS)
 end
 
-
+#=
 ##examine the effect of m and c for rHMC
 @everywhere cvec=linspace(0.01,10.0,15);@everywhere mvec=linspace(0.01,5.0,15);
 accvec=SharedArray(Float64,15,15);ESSvec=SharedArray(Float64,15,15)
@@ -107,28 +106,12 @@ end
 legend(loc="upper left")
 xlabel("c");
 title("ESS vs c for different m, rHMC")
-
+=#
 #=outfile=open("rhmc_mc","a") #append to file
     println(outfile,"accvec=",accvec,"; ESSvec=",ESSvec, "; cvec=", cvec, "; mvec=", mvec)
 close(outfile)
 =#
-#=
-outfile=open("rhmc_mc","a") #append to file
-    println(outfile,"accvec=",accvec,"; ESSvec=",ESSvec, "; cvec=", cvec, "; mvec=", mvec)
-close(outfile)
-=#
-
 #optimal m and c: c=9.3; m=0.4;
-
-
-
-mvec=linspace(0.1,10,10);accvec=Array(Float64,10)
-for i=1:10
-  srhmc = RelHMCState(zeros(2),stepsize=0.5,mass=mvec[i]);
-  rhmc,raccratio = run(srhmc,dm,num_iterations=1000, final_plot=false)
-  accvec[i]=mean(raccratio)
-end
-
 
 ##examine the effect of stepsize
 stepsizevec = linspace(0.001,0.5,32);ESS=SharedArray(Float64,length(stepsizevec),2);accratiovec=SharedArray(Float64,length(stepsizevec))
@@ -138,15 +121,16 @@ stepsizevec = linspace(0.001,0.5,32);ESS=SharedArray(Float64,length(stepsizevec)
   accratio[accratio.>1] = 1;
   arf = StatsBase.autocor(hmc)
 	ESS[i,:] = [1000000/(1+2*sum(arf[:,j])) for j=1:size(hmc,2)]
-  accratiovec[i] = exp(mean(accratio))
+  accratiovec[i] = mean(accratio)
 end
 plot(stepsizevec,ESS);title("ESS vs stepsize, Newtonian HMC")
 plot(stepsizevec,accratiovec);title("acceptance prob vs stepsize, Newtonian HMC")
 
+#=
 outfile=open("hmc_stepsize","a") #append to file
     println(outfile,"ESS=",ESS,"; accratiovec=",accratiovec, "; stepsizevec=", stepsizevec)
 close(outfile)
-
+=#
 
 
 stepsizevec = linspace(0.001,0.5,32);rESS=SharedArray(Float64,length(stepsizevec),2);raccratiovec=SharedArray(Float64,length(stepsizevec))
@@ -155,15 +139,16 @@ stepsizevec = linspace(0.001,0.5,32);rESS=SharedArray(Float64,length(stepsizevec
 	rhmc,raccratio = run(srhmc,dm,num_iterations=1000000, final_plot=false)
   arf = StatsBase.autocor(rhmc)
 	rESS[i,:] = [1000000/(1+2*sum(arf[:,j])) for j=1:size(rhmc,2)]
-  raccratiovec[i] = exp(mean(raccratio))
+  raccratiovec[i] = mean(raccratio)
 end
 
-plot(stepsizevec,rESS)
-
+outfile=open("rhmc_stepsize","a") #append to file
+    println(outfile,"rESS=",rESS,"; raccratiovec=",raccratiovec, "; stepsizevec=", stepsizevec)
+close(outfile)
 ####animation
 
 
-
+#=
 function myani(s::SamplerState)
   samples = myrun(s,dm,num_iterations=1000)[1]
   llik = getllik(dm)
@@ -188,17 +173,7 @@ srhmc = RelHMCState(zeros(2),stepsize=stepsizevec[i],c=9.3, mass=0.4);
 
 myani(HMCState(zeros(2),stepsize=0.1))
 myani(RelHMCState(zeros(2),stepsize=0.1,c=9.3, mass=0.4))
-
-@sync @parallel for i=1:length(stepsizevec)
-	srhmc = RelHMCState(zeros(2),stepsize=stepsizevec[i]);
-	rhmc = run(srhmc,dm,num_iterations=1000000, final_plot=false)
-        arf = StatsBase.autocor(rhmc)
-	ESS[i,:] = [1000000/(1+2*sum(arf[:,j])) for j=1:size(rhmc,2)]
-end
-
-
-
-
+=#
 #=
 
 srhmc = RelHMCState(zeros(2),stepsize=0.1);rhmc = run(srhmc,dm,final_plot=true);
@@ -212,20 +187,6 @@ function traceplot(samplestats)
 	end
 end
 title("traceplots pf x[1], SGRHMC for muptiple chains")
-
-
-function myani(res)
-	pygui(true)
-	for i=1:size(res[1],1)
-	    PyPlot.cla()
-	    llik = getllik(dm)
-	    llik(x,y) = llik([x,y])
-	    plot_contour(llik, -5:.05:6, -1:.05:32)
-	    PyPlot.scatter(res[1][1:i,1], res[1][1:i,2])
-	    pause(0.001)
-	end
-end
-
 =#
 
 

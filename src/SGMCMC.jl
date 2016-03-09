@@ -36,7 +36,7 @@ module SGMCMC
         s.p += (iter<niters ? stepsize : .5*stepsize) * grad(s.x) # two leapfrog steps rolled in one unless at the end.
       end
 
-      logaccratio = min(llik(s.x) - llik(curx) -.5*sum((s.p.*s.p - curp.*curp)./mass),1)
+      logaccratio = llik(s.x) - llik(curx) -.5*sum((s.p.*s.p - curp.*curp)./mass)
      if 0.0 > (logaccratio - log(rand()))[1]
           #reject
           s.x = curx
@@ -46,7 +46,7 @@ module SGMCMC
           #negate momentum for symmetric Metropolis proposal
           s.p = -s.p
       end
-      return s,logaccratio
+      return s,min(exp(logaccratio),1)
     end
 
     #includes adaptive rejection sampling for momentum distribution.
@@ -77,8 +77,6 @@ module SGMCMC
       stepsize = s.stepsize
       niters = s.niters
       c = s.c
-
-
       #resample relativistic momentum
       s.p = sample_rel_p(mass, c, nparams)
 
@@ -95,7 +93,7 @@ module SGMCMC
       cur_ke = sum(mass.*c.^2 .* sqrt(curp.^2 ./(mass.*c).^2 +1))[1]
       ke = sum(mass.*c.^2 .* sqrt(s.p.^2 ./(mass.*c).^2 +1))[1]
 
-      logaccratio = min(llik(s.x) - llik(curx) - ke + cur_ke,1)
+      logaccratio = llik(s.x) - llik(curx) - ke + cur_ke
       if 0.0 > (logaccratio - log(rand()))[1]
           #reject
           s.x = curx
@@ -105,7 +103,7 @@ module SGMCMC
           #negate momentum for symmetric Metropolis proposal
           s.p = -s.p
       end
-      return s,exp(logaccratio)
+      return s,min(exp(logaccratio),1)
     end
 
     # logpdf of the relhmc momentum variable
