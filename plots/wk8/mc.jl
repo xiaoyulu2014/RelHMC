@@ -1,3 +1,4 @@
+#file to find appropriate m and c for the banana example
 @everywhere push!(LOAD_PATH,"/homes/xlu/Documents/RelHMC/src")
 @everywhere push!(LOAD_PATH,"/homes/xlu/Documents/RelHMC/models/")
 #@everywhere push!(LOAD_PATH,"/Users/Xiaoyu Lu/Documents/RelHMC/src")
@@ -65,7 +66,7 @@ accvec=SharedArray(Float64,15,15);ESSvec=SharedArray(Float64,15,15)
   for j=1:15
   srhmc = RelHMCState(zeros(2),stepsize=0.1,c = cvec[i],mass=mvec[j]);
   rhmc,raccratio = run(srhmc,dm,num_iterations=1000000, final_plot=false)
-  accvec[i,j]=mean(raccratio)
+  accvec[i,j]=median(raccratio)
   arf = StatsBase.autocor(rhmc)
   ESSvec[i,j]= (1000000/(1+2*sum(arf[:,1]))+1000000/(1+2*sum(arf[:,2])))/2
   end
@@ -112,91 +113,3 @@ title("ESS vs c for different m, rHMC")
 close(outfile)
 =#
 #optimal m and c: c=9.3; m=0.4;
-
-##examine the effect of stepsize
-stepsizevec = linspace(0.001,0.5,32);ESS=SharedArray(Float64,length(stepsizevec),2);accratiovec=SharedArray(Float64,length(stepsizevec))
-@sync @parallel for i=1:length(stepsizevec)
-	shmc = HMCState(zeros(2),stepsize=stepsizevec[i]);
-	hmc,accratio = run(shmc,dm,num_iterations=1000000, final_plot=false)
-  arf = StatsBase.autocor(hmc)
-	ESS[i,:] = [1000000/(1+2*sum(arf[:,j])) for j=1:size(hmc,2)]
-  accratiovec[i] = median(accratio)
-end
-plot(stepsizevec,ESS);title("ESS vs stepsize, Newtonian HMC")
-plot(stepsizevec,accratiovec);title("acceptance prob vs stepsize, Newtonian HMC")
-
-#=
-outfile=open("hmc_stepsize","a") #append to file
-    println(outfile,"ESS=",ESS,"; accratiovec=",accratiovec, "; stepsizevec=", stepsizevec)
-close(outfile)
-=#
-
-
-stepsizevec = linspace(0.001,0.5,32);rESS=SharedArray(Float64,length(stepsizevec),2);raccratiovec=SharedArray(Float64,length(stepsizevec))
-@sync @parallel for i=1:length(stepsizevec)
-	srhmc = RelHMCState(zeros(2),stepsize=stepsizevec[i],c=9.3, mass=0.4);
-	rhmc,raccratio = run(srhmc,dm,num_iterations=1000000, final_plot=false)
-  arf = StatsBase.autocor(rhmc)
-	rESS[i,:] = [1000000/(1+2*sum(arf[:,j])) for j=1:size(rhmc,2)]
-  raccratiovec[i] = mean(raccratio)
-end
-
-outfile=open("rhmc_stepsize","a") #append to file
-    println(outfile,"rESS=",rESS,"; raccratiovec=",raccratiovec, "; stepsizevec=", stepsizevec)
-close(outfile)
-####animation
-
-
-#=
-function myani(s::SamplerState)
-  samples = myrun(s,dm,num_iterations=1000)[1]
-  llik = getllik(dm)
-  llik1(x,y) = llik([x,y])
-  range_x=-5:.05:6;range_y=-1:.05:32
-  grid_x = [i for i in range_x, j in range_y];
-  grid_y = [j for i in range_x, j in range_y];
-  grid_f = [exp(llik1(i,j)) for i in range_x, j in range_y];
-  fig=figure();
-  ax=fig[:add_subplot](111)
-  ax[:contour](grid_x',grid_y',grid_f',1)
-  line=ax[:plot](samples[1,1], samples[1,2],"ro")
-  for i=1:size(samples,1)
-    line[1][:set_data](samples[i,1], samples[i,2])
-    fig[:canvas][:draw]()
-  end
-end
-
-
-shmc = HMCState(zeros(2),stepsize=0.1);
-srhmc = RelHMCState(zeros(2),stepsize=stepsizevec[i],c=9.3, mass=0.4);
-
-myani(HMCState(zeros(2),stepsize=0.1))
-myani(RelHMCState(zeros(2),stepsize=0.1,c=9.3, mass=0.4))
-=#
-#=
-
-srhmc = RelHMCState(zeros(2),stepsize=0.1);rhmc = run(srhmc,dm,final_plot=true);
-ssgrhmc = SGRelHMCState(zeros(2),stepsize=0.1);sgrhmc = run(ssgrhmc, dm, final_plot=true);
-ssgrnhthmc = SGNHTRelHMCState(zeros(2),stepsize=0.01);sgrnhthmc = run(ssgrnhthmc, dm, final_plot=true)
-
-function traceplot(samplestats)
-	for i=1:5
-		res = run(samplestats,dm,final_plot=false);
-		plot(res[1][:,1])
-	end
-end
-title("traceplots pf x[1], SGRHMC for muptiple chains")
-=#
-
-
-
-
-
-
-
-
-
-
-
-
-
