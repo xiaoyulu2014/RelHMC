@@ -46,7 +46,7 @@ end
     samples,accratio
 end
 
-
+#=
 ##examine the effect of stepsize
 stepsizevec = linspace(0.001,0.5,32);ESS=SharedArray(Float64,length(stepsizevec),2);accratiovec=SharedArray(Float64,length(stepsizevec))
 @sync @parallel for i=1:length(stepsizevec)
@@ -80,3 +80,37 @@ close(outfile)
 
 plot(stepsizevec,rESS,label="RHMC,m=0.4, c=9.3");title("ESS vs stepsize")
 plot(stepsizevec,ESS,label="HMC");
+=#
+######################
+
+
+##ESS as a function of leapfrog steps
+
+##examine the effect of stepsize
+nitersvec = linspace(5,100,16);ESS=SharedArray(Float64,length(nitersvec),2);accratiovec=SharedArray(Float64,length(nitersvec))
+@sync @parallel for i=1:length(stepsizevec)
+	shmc = HMCState(zeros(2),niters=nitersvec[i]);
+	hmc,accratio = run(shmc,dm,num_iterations=1000000, final_plot=false)
+  arf = StatsBase.autocor(hmc)
+	ESS[i,:] = [1000000/(1+2*sum(arf[:,j])) for j=1:size(hmc,2)]
+  accratiovec[i] = median(accratio)
+end
+
+
+outfile=open("hmc_niters","a") #append to file
+    println(outfile,"ESS=",ESS,"; accratiovec=",accratiovec, "; nitersvec=", nitersvec)
+close(outfile)
+
+
+rESS=SharedArray(Float64,length(nitersvec),2);raccratiovec=SharedArray(Float64,length(nitersvec))
+@sync @parallel for i=1:length(stepsizevec)
+	srhmc = RelHMCState(zeros(2),niters=nitersvec[i],c=9.3, mass=0.4);
+	rhmc,raccratio = run(srhmc,dm,num_iterations=1000000, final_plot=false)
+  arf = StatsBase.autocor(rhmc)
+	rESS[i,:] = [1000000/(1+2*sum(arf[:,j])) for j=1:size(rhmc,2)]
+  raccratiovec[i] = mean(raccratio)
+end
+
+outfile=open("rhmc_niters","a") #append to file
+    println(outfile,"rESS=",rESS,"; raccratiovec=",raccratiovec, "; nitersvec=", stepsizevec)
+close(outfile)

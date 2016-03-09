@@ -57,3 +57,4 @@ figure()
 plt[:hist](vhmc1,10,label="HMC");plt[:hist](rvhmc1,10,label="RHMC")
 title("histogram of velocity, stepsize=0.5")
 legend()
+
