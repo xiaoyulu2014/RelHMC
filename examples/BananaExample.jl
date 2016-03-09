@@ -1,7 +1,7 @@
 @everywhere push!(LOAD_PATH,"/homes/xlu/Documents/RelHMC/src")
 @everywhere push!(LOAD_PATH,"/homes/xlu/Documents/RelHMC/models/")
-@everywhere push!(LOAD_PATH,"/Users/Xiaoyu Lu/Documents/RelHMC/src")
-@everywhere push!(LOAD_PATH,"/Users/Xiaoyu Lu/Documents/RelHMC/models/")
+@everywhere push!(LOAD_PATH,"/Users/Xiaoyu Lu/Documents/RelHMC-group/src")
+@everywhere push!(LOAD_PATH,"/Users/Xiaoyu Lu/Documents/RelHMC-group/models/")
 @everywhere using SGMCMC
 @everywhere using DataModel
 @everywhere using Banana
@@ -18,7 +18,7 @@
 
     PyPlot.contour(grid_x', grid_y', grid_f', 1)
 end
-@everywhere function myrun(s::SamplerState,dm::AbstractDataModel;num_iterations=1000, final_plot=false)
+@everywhere function run(s::SamplerState,dm::AbstractDataModel;num_iterations=1000, final_plot=false)
     grad = getgrad(dm)
     llik = getllik(dm)
     samples = zeros(num_iterations, length(s.x))
@@ -26,7 +26,8 @@ end
     zeta = zeros(num_iterations)
     for i = 1:num_iterations
 
-        accratio[i]=sample!(s,llik,grad)[2]
+       # accratio[i]=sample!(s,llik,grad)[2]
+        sample!(s,llik,grad)
         samples[i,:] = s.x
         if typeof(s) <: SGMCMC.SGNHTRelHMCState  zeta[i] = s.zeta[1]  end
     end
@@ -42,7 +43,7 @@ end
             #plot(samples[:,1]);plot(samples[:,2]);title("traceplots of components")
         end
     end
-    samples,accratio
+    samples#,accratio
 end
 
 ##function to plot ESS as the number of iterations
@@ -202,7 +203,7 @@ end
 
 srhmc = RelHMCState(zeros(2),stepsize=0.1);rhmc = run(srhmc,dm,final_plot=true);
 ssgrhmc = SGRelHMCState(zeros(2),stepsize=0.1);sgrhmc = run(ssgrhmc, dm, final_plot=true);
-ssgrnhthmc = SGNHTRelHMCState(zeros(2),stepsize=0.1);sgrnhthmc = run(ssgrnhthmc, dm, final_plot=true)
+ssgrnhthmc = SGNHTRelHMCState(zeros(2),stepsize=0.01);sgrnhthmc = run(ssgrnhthmc, dm, final_plot=true)
 
 function traceplot(samplestats)
 	for i=1:5
