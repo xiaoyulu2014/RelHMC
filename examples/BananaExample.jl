@@ -56,11 +56,9 @@ end
 	return(ESS)
 end
 
-
-####animation
 #=
 function myani(s::SamplerState)
-  samples = run(s,dm,num_iterations=1000)
+  samples = myrun(s,dm,num_iterations=1000)
   llik = getllik(dm)
   llik1(x,y) = llik([x,y])
   range_x=-5:.05:6;range_y=-1:.05:32
@@ -84,7 +82,9 @@ myani(SGRelHMCState(zeros(2),stepsize=0.2))
 myani(SGNHTRelHMCState(zeros(2),stepsize=0.2))
 myani(SGRelHMCState(zeros(2),stepsize=0.1,c=[9], mass=[0.4]))
 myani(SGNHTRelHMCState(zeros(2),stepsize=0.1,c=[9], mass=[0.4]))
-=#
+
+#=
+
 
 
 
