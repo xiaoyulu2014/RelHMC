@@ -58,7 +58,7 @@ end
 
 #=
 function myani(s::SamplerState)
-  samples = myrun(s,dm,num_iterations=1000)
+  samples = run(s,dm,num_iterations=1000)
   llik = getllik(dm)
   llik1(x,y) = llik([x,y])
   range_x=-5:.05:6;range_y=-1:.05:32
