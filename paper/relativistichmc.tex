@@ -1,0 +1,37 @@
+\section{Relativistic Hamiltonian Monte Carlo}
+Consider a target density $f(\theta)$ that can be written as $f(\theta) \propto e^{-U(\theta)}$. Hamiltonian Monte Carlo operates by introducing auxiliary variables $p$ so that $f(\theta, p) \propto e^{-H(\theta,p)}$, where
+\begin{eqnarray}
+H(\theta,p) = U(\theta) + \frac{1}{2m}p^Tp
+\end{eqnarray}
+so that $p$ is marginally normally distributed. This Hamiltonian lends itself to the interpretation of a particle with position $\theta$ and momentum $p$ moving in a system with potential energy $U(\theta)$ and according to the classical kinetic energy $\frac{1}{2m}p^Tp$. We can derive simple update
+equations for simulating from these dynamics using Hamilton’s equations:
+\begin{eqnarray}
+\dot{\theta} = \frac{\partial H}{\partial p} \dot{p} = -\frac{\partial H}{\partial \theta}
+\end{eqnarray}
+giving one possible set of updates (the leapfrog integrator):
+\begin{eqnarray}
+p_{t+1/2} \leftarrow p_t -\frac{1}{2}\epsilon\nabla U(\theta_t)\\
+\theta_{t+1} \leftarrow \theta_t + \epsilon \frac{p_{t+1/2}}{m}\\
+p_{t+1} \leftarrow p_{t+1/2} -\frac{1}{2}\epsilon\nabla U(\theta_{t+1})
+\end{eqnarray}
+which is then followed by a Metropolis Hastings accept/reject step. This choice of update is chosen so that the Hamiltonian $H$ is left approximately invariant, so that as the
+acceptance probability approaches 1.
+One consequence of these updates is that, when applying HMC to problems where 
+is very peaked, the momentum $p$ can become very large, resulting in large updates for $\theta$, and thus a very fine discretization is needed.
+Consider if, instead of the classical kinetic energy were used for the Hamiltonian, the relativistic kinetic energy were used instead:
+\begin{eqnarray}
+K(p) = mc^2\left(\frac{p^Tp}{m^2c^2}+1\right)^{\frac{1}{2}}
+\end{eqnarray}
+where c is the “speed of light” which bounds the speed of any particle. This gives the Hamiltonian:
+\begin{eqnarray}
+H(\theta,p) = U(\theta) + mc^2\left(\frac{p^Tp}{m^2c^2}+1\right)^{\frac{1}{2}}
+\end{eqnarray}
+The update equations then become
+\begin{eqnarray}
+p_{t+1/2} &\leftarrow p_t -\frac{1}{2}\epsilon\nabla U(\theta_t)\\
+\theta_{t+1} &\leftarrow \theta_t + \epsilon \frac{p_{t+1/2}}{m}\left(\frac{p_{t+1/2}^T p_{t+1/2}}{m^2c^2}+1\right)^{-\frac{1}{2}}\\
+p_{t+1} &\leftarrow p_{t+1/2} -\frac{1}{2}\epsilon\nabla U(\theta_{t+1})
+\end{eqnarray}
+Here the momentum is still unbounded and may become very large in the presence of large
+gradients in the potential energy. However, the size of the $\theta$ update is bounded by c, thus the behavior of the proposed samples can be more easily controlled in the presence
+of large gradients. The marginal distribution of p is no longer normal, but its density is log-concave and can be sampled using Adaptive Rejection Sampling.

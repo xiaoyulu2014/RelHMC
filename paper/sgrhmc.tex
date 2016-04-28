@@ -1,0 +1,42 @@
+\section{Stochastic Gradient Relativistic Hamiltonian Monte
+Carlo}
+Hamiltonian Monte Carlo algorithms are also of particular interest for “stochastic gradient” style algorithms where mini-batches are used to form noisy estimates of the gradients. One motivation
+for this is that the momentum serves as a reservoir of previous gradient information; a large gradient will result in a large p, which may stay large for a while unless met with another large gradient, thus retaining the memory of a strong signal on prior batches of data. However, due to potentially large variability in the gradient computed in these algorithms, stochastic
+gradient Hamiltonian algorithms may still result in overly large updates, requiring very small values of  and thus potentially slow convergence. This motivates the use of the Relativistic Hamiltonian in a stochastic gradient sampler; the inherent bound in the update size allows the sampler to more easily smooth out the noise in the gradient over multiple steps.
+
+\cite{Ma2015} gives a framework for taking update equations associated with a particular Hamiltonian and constructing asymptotically consistent stochastic gradient samplers. Specifically, \cite{Ma2015} consider a SDE with drift $f(z)$ and diffusion $2D(z)$:
+\begin{eqnarray}
+dz = f(z)dt + \sqrt{2D(z)}dW_t
+\end{eqnarray}
+where $z = (\theta, p)$, $W_t$ is a d-dimensional Wiener process, and
+\begin{eqnarray}
+f(z) = -\left[D(z)+Q(z)\right]\nabla H(z) + \Gamma(z), \Gamma_i = \sum_{j=1}^d\frac{\partial}{\partial z_j}\left(D_{ij}(z) + Q_{ij}(z)\right)
+\end{eqnarray}
+where $Q(z)$ is skew-symmetric. Then the update equations
+\begin{eqnarray}
+z_{t+1} \leftarrow z_t - \epsilon_t \left[\left[D(z_t)+Q(z_t)\right]\nabla \tilde{H}(z_t) + \Gamma(z_t)\right] + \mathcal{N}(0,\epsilon_t(2D(z_t)-\epsilon_t \hat{B}_t))\label{eq:MaUpdate}
+\end{eqnarray}
+gives an asymptotically consistent chain when the stepsizes t decrease to zero at the appropriate rate.  Here $\tilde{H}(z)$ is the estimate of the Hamiltonian, e.g. using mini-batches, and $\hat{B}$ is an estimate of the variance of the noise of the approximate gradient computation. Note
+that this estimate need not be unbiased for the chain to be consistent – failing better choices we may choose $\hat{B}_t = 0$. In practice, decreasing the stepsizes t results in progressively slower mixing, and it is often preferable to fix a stepsize and accept that the sampler will incur
+some asymptotic bias.
+We can formulate Relativistic Hamiltonian Monte Carlo into this framework by taking
+\begin{eqnarray}
+H(\theta,p) &= U(\theta) + mc^2\left(\frac{p^Tp}{m^2c^2}+1\right)^{\frac{1}{2}}\\
+D(z) &= \left[\begin{array}{cc} 0 & 0\\ 0 & D\end{array}\right]\\
+Q(z) &= \left[\begin{array}{cc} 0 & -I\\ I & 0\end{array}\right]
+\end{eqnarray}
+which gives $\Gamma_i(z) = 0$ and 
+\begin{eqnarray}
+f\left(\left[\begin{array}{c}\theta\\ p\end{array}\right]\right) = - \left[\begin{array}{cc} 0 & -I\\ I & D\end{array}\right]\left[\begin{array}{c}\nabla U(\theta)\\
+\frac{p}{m}\left(\frac{p^Tp}{m^2c^2}+1\right)^{-\frac{1}{2}} \end{array}\right]
+\end{eqnarray}
+which gives the SDE
+\begin{eqnarray}
+d \theta &= \frac{p}{m}\left(\frac{p^Tp}{m^2c^2}+1\right)^{-\frac{1}{2}}\\
+dp &= \left(-\nabla U(\theta)-D\frac{p}{m}\left(\frac{p^Tp}{m^2c^2}+1\right)^{-\frac{1}{2}} \right)dt +\sqrt{2D}dW_t
+\end{eqnarray}
+Then (\ref{eq:MaUpdate}) gives the updates:
+\begin{eqnarray}
+p_{t+1} \leftarrow p_t - \epsilon_t \nabla \tilde{U}(\theta_t) -\epsilon_t D \frac{p_t}{m}\left(\frac{p_t^Tp_t}{m^2c^2}+1\right)^{-\frac{1}{2}}+\mathcal{N}(0,\epsilon_t(2D-\epsilon_t \hat{B}_t))\\
+\theta_{t+1} \leftarrow \theta_t + \epsilon_t \frac{p_{t+1}}{m}\left(\frac{p_{t+1}^Tp_{t+1}}{m^2c^2}+1\right)^{-\frac{1}{2}}
+\end{eqnarray}

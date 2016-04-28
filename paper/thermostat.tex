@@ -1,0 +1,61 @@
+\section{A Stochastic Gradient Nosé-Hoover Thermostat for Relativistic Hamiltonian Monte Carlo}
+The stochastic gradient version of HMC (SGHMC) introduced by \cite{Chen2014} can be improved by introducing an additional dynamic variable $\xi$ to adaptively increase or decrease the momenta (\cite{Ding2014},\cite{Leimkuhler2016}). The extended systems has a Hamiltonian of the form
+\begin{eqnarray}
+H(\theta,p,\xi) = U(\theta) +\frac{1}{2}p^Tp + \frac{d}{2}(\xi -D)^2\label{eq:thermostatH}
+\end{eqnarray}
+The dynamics of this approach, known as stochastic gradient Nosé-Hoover thermostat due to its links to statistical physics, can be expressed as:
+\begin{eqnarray}
+	d\theta = p dt\\
+	d p = -\nabla \tilde{U} dt - \xi p dt + \sqrt{2D}dW_t\\
+	d\xi = \frac{1}{d}\left(p^Tp -1\right)dt
+\end{eqnarray}
+ Intuitively this approach works because 
+\begin{eqnarray}
+  \mathbb{E}\left[\frac{d\xi}{dt}\right]=0, \mbox{ when sampling from the target joint distribution }\label{eq:thermostat}
+\end{eqnarray}
+
+ The system adaptively `heats' or `cools' to push the system closer to obeying (\ref{eq:thermostat}). Hence the additional dynamics will move the distribution closer to the equilibrium. In particular this helps to reduce the bias of SGHMC. 
+ A natural question is whether these methods can be extended to relativistic HMC. \cite{Leimkuhler2016} show that for a general kinetic energy $K(p)$, provided that $\xi$ is normally distributed in equilibrium (i.e. using the Hamiltonian in (\ref{eq:thermostatH})) the $\xi$ dynamics become
+ \begin{eqnarray}
+  d\xi = \frac{1}{d}\left(\|\nabla K(p)\|^2 - \nabla^2 K(p)\right)dt
+ \end{eqnarray}
+ Note that these general dynamics can still be interpreted as maintaining an equation like (\ref{eq:thermostat}) since
+ \begin{eqnarray}
+ \mathbb{E}\left[ \frac{\partial^2 K}{\partial p_i^2}\right] = \int \frac{\partial^2 K}{\partial p_i^2} e^{-K(p)} dp\\
+= \underbrace{\int \left[\frac{\partial K}{\partial p_i} e^{-K(p)}\right]_{p_i=\infty}^\infty dp_{-i}}_{=0} - \int \frac{\partial K}{\partial p_i}\left(-\frac{\partial K}{\partial p_i} e^{-K(p)}\right) dp= \mathbb{E}\left[\left(\frac{\partial K}{\partial p_i}\right)^2\right]
+ \end{eqnarray}
+ and hence $\mathbb{E}\left[\frac{d\xi}{dt}\right]=0$.
+We can fit these ideas into the framework of \cite{Ma2015} by defining:
+ \begin{eqnarray}
+H(\theta,p,\xi) = U(\theta) + K(p) + \frac{d}{2}(\xi -D)^2\\
+D(\theta,p,\xi) &= \left(\begin{array}{ccc}
+0 & 0 & 0\\
+0 & D\cdot I & 0\\
+0 & 0 & 0
+\end{array}\right) \\
+Q(\theta,p,\xi) &= \left(\begin{array}{ccc}
+0 & -I & 0\\
+I & 0 & \nabla K(p)/d\\
+0 & -\nabla K(p)^T/d & 0
+\end{array}\right)
+\end{eqnarray}
+ This gives
+ \begin{eqnarray}
+ \Gamma = \left(\begin{array}{c}
+	0\\0\\-\nabla^2 K(p)/d
+ \end{array}\right)
+ \end{eqnarray}
+ and the dynamics become
+ \begin{eqnarray}
+ 	d\theta =  \nabla K(p) dt\\
+	d p = -\nabla \tilde{U} dt - \xi \nabla K(p) dt + \sqrt{2D}dW_t\\
+	d\xi =  \frac{1}{d}\left(\|\nabla K(p)\|^2 - \nabla^2 K(p)\right)dt
+ \end{eqnarray}
+ 
+ This gives a general recipe for a stochastic gradient Nosé-Hoover thermostat with a general kinetic energy $K(p)$. For the relativistic kinetic energy we have $\nabla_pK(p) = M^{-1}(p)p$ with $M(p):= m\left(\frac{p^Tp}{m^2c^2}+1\right)^\frac{1}{2}$ a scalar, and $ \nabla^2 K(p) = tr\left(\frac{d}{dp}\left(\frac{1}{d}M^{-1}(p)p\right)\right)$ and therefore
+ \begin{align}
+ 	d\theta &=   M^{-1}(p)p  dt\\
+	d p &=  - \nabla\tilde{U}-\zeta M^{-1}(p)p dt + \sqrt{2D}dW_t\\
+	d\xi &=  \frac{p^Tp}{d}\left(M^{-2}(p) + c^{-2}M^{-3}(p)\right) - M^{-1}(p)dt
+ \end{align}
+ 
