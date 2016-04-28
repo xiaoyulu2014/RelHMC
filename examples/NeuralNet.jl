@@ -23,7 +23,7 @@ tdlabel   = convert(Array{Float64,2},testFile["label"][:,:])
 
 backend = initMochaBackend(false)
 include("/homes/xlu/Documents/RelHMC-group/models/MochaModelFactories/models.jl")
-model,name = make_dense_nn([500],10)
+model,name = make_dense_nn([500,300],10)
 dm = MochaSGMCMCDataModel(images,dlabel,model,backend)
 dmtest = MochaSGMCMCDataModel(timages,tdlabel,model,backend,do_accuracy=true)# for test set accuracy
 dmtraintest = MochaSGMCMCDataModel(images,dlabel,model,backend,do_accuracy=true)# for training set accuracy
