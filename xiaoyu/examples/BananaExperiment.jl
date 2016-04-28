@@ -10,11 +10,12 @@
 #wk = "/data/greypartridge/oxwasp/oxwasp14/xlu/RelHMC/Banana_stepsize/"
 #@everywhere wk = "/homes/xlu/Documents/RelHMC-group/xiaoyu/plots/wk12/Banana_stepsize_zoom/"
 
+#@everywhere wk = "/homes/xlu/Documents/RelHMC-group/xiaoyu/plots/wk1/"
 
 function banana(b::Real)
     function banana_logdensity(x)
         @assert length(x) == 2
-        -1/2*(x[1]^2/100+(x[2]+b*x[1]^2-100*b)^2) 
+        -1/2*(x[1]^2/100+(x[2]+b*x[1]^2-100*b)^2)
     end
     return banana_logdensity
 end
@@ -27,10 +28,10 @@ end
     grid_f = [exp(f([i,j])) for i in range_x, j in range_y]
 
     PyPlot.plot_surface(grid_x', grid_y', grid_f', rstride=3,edgecolors="k", cmap=ColorMap("Greys"),cstride=1, alpha=0.5, linewidth=0.25)
-end    
-    
+end
+
 #plot_surface(banana(0.1),-20:.05:20, -10:.05:15)
-    
+
 @everywhere dm = BananaModel()
 
 @everywhere function plot_contour(f, range_x, range_y)
@@ -70,7 +71,7 @@ end
     samples
 end
 ###ESS contour plot
-@everywhere function ESS_func(s::SamplerState,dm::AbstractDataModel;num_iterations=50000,burnin=1000,num_chain=20)
+@everywhere function ESS_func(s::SamplerState,dm::AbstractDataModel;num_iterations=10000,burnin=1000,num_chain=20)
 	ESS = 0;
 	for k=1:num_chain
 		grad = getgrad(dm)
@@ -95,8 +96,8 @@ end
     return(ESS/num_chain)
 end
 
-@everywhere n1,n2=7,9
-@everywhere avec = exp(linspace(-1,0,n1))
+@everywhere n1,n2=40,20
+@everywhere avec = exp(linspace(-1,2,n1))
 @everywhere epsvec = exp(linspace(-3,0.5,n2))
 @everywhere cvec = exp(linspace(-1,0,n1))
 @everywhere t=Iterators.product(avec,epsvec)
@@ -129,17 +130,17 @@ end
 
 
 ESS1=reshape(ESS1,n1,n2)
-	
+
 fig = figure("pyplot_surfaceplot")
-ax = fig[:add_subplot](1,2,1) 
-cp = ax[:contour](epsvec, cvec, ESS, linewidth=2.0) 
-ax[:clabel](cp, inline=1, fontsize=10) 
+ax = fig[:add_subplot](1,2,1)
+cp = ax[:contour](epsvec, cvec, ESS, linewidth=2.0)
+ax[:clabel](cp, inline=1, fontsize=10)
 xscale("log");yscale("log")
 xlabel("stepsize"); ylabel("stepsize*c")
 title("contour plot of ESS, banana example")
-ax1 = fig[:add_subplot](1,2,2) 
-cp = ax1[:contour](epsvec, cvec, ESS1, linewidth=2.0) 
-ax1[:clabel](cp, inline=1, fontsize=10) 
+ax1 = fig[:add_subplot](1,2,2)
+cp = ax1[:contour](epsvec, cvec, ESS1, linewidth=2.0)
+ax1[:clabel](cp, inline=1, fontsize=10)
 xscale("log");yscale("log")
 xlabel("stepsize"); ylabel("c")
 title("contour plot of ESS, banana example")
@@ -149,7 +150,7 @@ title("contour plot of ESS, banana example")
 banana_ESS = load("/homes/xlu/Documents/RelHMC-group/xiaoyu/plots/wk1/banana_ESS.jld")
 ##stein discrepancy
 #optimal parameters
-#big stepsize, HMC cannot explore 
+#big stepsize, HMC cannot explore
 #=
 samples=myrun(HMCState([0.0,10.0],stepsize=1,niters=50,mass=1),dm,num_iterations=1000)
 rsamples=myrun(RelHMCState([0.0,10.0],stepsize=1,c=0.4,niters=50,mass=1),dm,num_iterations=1000)
@@ -191,7 +192,7 @@ phi(x)=[sigma/10*x[1],sigma*(x[2]+b*x[1]^2-100*b)]
 
 y,ry,sry,srnhty,rcy=[Array(Float64,2,num_iter,num_chain*length(stepsizevec)) for i=1:5]
 for i=1:num_iter,j=1:num_chain*length(stepsizevec)
-	y[:,i,j]=phi(samples[i,:,j]) 
+	y[:,i,j]=phi(samples[i,:,j])
 	ry[:,i,j]=phi(rsamples[i,:,j]))
 end
 
@@ -219,7 +220,7 @@ save("$(wk)banana_rc.jld","jobs",rcjobs)
 
 ##plot
 #=
-dic=load(string(wk,"banana.jld"))   
+dic=load(string(wk,"banana.jld"))
 jobs=dic["jobs"]
 rdic=load(string(wk,"banana_r.jld"))
 rjobs=rdic["jobs"]
@@ -266,7 +267,7 @@ legend()
     grad = getgrad(dm)
     llik = getllik(dm)
     samples = zeros(num_iterations, length(s.x))
-    ESS,accratio = zeros(2);  
+    ESS,accratio = zeros(2);
     for i = 1:num_iterations
 		curx = s.x
 		if (typeof(s) <: SGNHTRelHMCState ||  typeof(s) <: SGRelHMCState)
@@ -317,13 +318,13 @@ phi(x)=[sigma/10*x[1],sigma*(x[2]+b*x[1]^2-100*b)]
 
 y=Array(Float64,2,num_iter,num_chain);ry=Array(Float64,2,num_iter,num_chain);sry=Array(Float64,2,num_iter,num_chain);srnhty=Array(Float64,2,num_iter,num_chain)
 for i=1:size(samples[1],1),j=1:num_chain
-	y[:,i,j]=phi(samples[j][i,:]) 
-	ry[:,i,j]=phi(rsamples[j][i,:]) 
-	sry[:,i,j]=phi(srsamples[j][i,:]) 
-	srnhty[:,i,j]=phi(srnhtsamples[j][i,:]) 
+	y[:,i,j]=phi(samples[j][i,:])
+	ry[:,i,j]=phi(rsamples[j][i,:])
+	sry[:,i,j]=phi(srsamples[j][i,:])
+	srnhty[:,i,j]=phi(srnhtsamples[j][i,:])
 end
 
-                   
+
 fig, axs = plt[:subplots](2,3)
 axs[1][:scatter](y[1,:,1],y[2,:,1],alpha=0.8);axs[1][:set_title]("HMC")
 axs[2][:scatter](ry[1,:,1],ry[2,:,1],alpha=0.8);axs[2][:set_title]("Rel HMC")
@@ -352,15 +353,15 @@ save("banana_srsmall.jld","jobs",srjobs)
 save("banana_srnhtsmall.jld","jobs",srnhtjobs)
 
 
-dic=load("/data/greyheron/oxwasp/oxwasp14/xlu/RelHMC/wk12/banana_small.jld") 
+dic=load("/data/greyheron/oxwasp/oxwasp14/xlu/RelHMC/wk12/banana_small.jld")
 jobs=dic["jobs"]
 rdic=load("/data/greyheron/oxwasp/oxwasp14/xlu/RelHMC/wk12/banana_rsmall.jld")
 rjobs=rdic["jobs"]
 srdic=load("/data/greyheron/oxwasp/oxwasp14/xlu/RelHMC/wk12/banana_srsmall.jld")
 srjobs=srdic["jobs"]
-gdic=load("/data/greyheron/oxwasp/oxwasp14/xlu/RelHMC/wk12/gaussian_small.jld") 
+gdic=load("/data/greyheron/oxwasp/oxwasp14/xlu/RelHMC/wk12/gaussian_small.jld")
 gjobs=gdic["jobs"]
-srnhtdic=load("/data/greyheron/oxwasp/oxwasp14/xlu/RelHMC/wk12/banana_srnhtsmall.jld") 
+srnhtdic=load("/data/greyheron/oxwasp/oxwasp14/xlu/RelHMC/wk12/banana_srnhtsmall.jld")
 srnhtjobs=srnhtdic["jobs"]
 
 figure()
@@ -381,11 +382,11 @@ for i=1:length(gjobs)
         plot(log(srjobs[i]["subsize"]),log(srjobs[i]["stein_discrepancys"]),linestyle="--",color="yellow",alpha=0.5)
         plot(log(srnhtjobs[i]["subsize"]),log(srnhtjobs[i]["stein_discrepancys"]),linestyle="--",color="pink",alpha=0.7)
 end
-gmean = mean([gjobs[i]["stein_discrepancys"] for i=1:num_chain]) 
-hmean = mean([jobs[i]["stein_discrepancys"] for i=1:num_chain]) 
-rmean = mean([rjobs[i]["stein_discrepancys"] for i=1:num_chain]) 
-srmean = mean([srjobs[i]["stein_discrepancys"] for i=1:num_chain]) 
-srnhtmean = mean([srnhtjobs[i]["stein_discrepancys"] for i=1:num_chain]) 
+gmean = mean([gjobs[i]["stein_discrepancys"] for i=1:num_chain])
+hmean = mean([jobs[i]["stein_discrepancys"] for i=1:num_chain])
+rmean = mean([rjobs[i]["stein_discrepancys"] for i=1:num_chain])
+srmean = mean([srjobs[i]["stein_discrepancys"] for i=1:num_chain])
+srnhtmean = mean([srnhtjobs[i]["stein_discrepancys"] for i=1:num_chain])
 plot(log(gjobs[1]["subsize"]),log(gmean),label="Gaussian",marker="o",color="blue")
 plot(log(gjobs[1]["subsize"]),log(hmean),label="HMC",marker="o",color="green")
 plot(log(gjobs[1]["subsize"]),log(rmean),label="Rel HMC",marker="o",color="red")

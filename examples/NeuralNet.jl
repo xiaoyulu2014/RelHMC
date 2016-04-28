@@ -83,6 +83,8 @@ end
 
 @everywhere hyp=[0.5,0.5,5];
 acc_ind=pmap(myfunc,[hyp for i=1:10])
+
+
 @everywhere function adamfunc(i)
 	x=deepcopy(y)
 	sadam=AdamState(x)
