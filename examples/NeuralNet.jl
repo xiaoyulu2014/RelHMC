@@ -90,12 +90,12 @@ acc_ind=pmap(myfunc,[hyp for i=1:10])
 end
 adam=pmap(adamfunc,[i for i=1:10])
 adam_mean_train,adam_mean_test,my_mean_train,my_mean_test = [Array(Float64,length(adam[1][1])) for i=1:4]
-for i=1:10    
-	adam_mean_train += adam[i][1]   
-	adam_mean_test += adam[i][2]   
-	my_mean_train += acc_ind[i][1]   
-	my_mean_test += acc_ind[i][2]   
-end   
+for i=1:10
+	adam_mean_train += adam[i][1]
+	adam_mean_test += adam[i][2]
+	my_mean_train += acc_ind[i][1]
+	my_mean_test += acc_ind[i][2]
+end
 adam_mean_train /= 10
 adam_mean_test /= 10
 my_mean_train /= 10
@@ -103,7 +103,7 @@ my_mean_test /= 10
 
 Adam_my=["adam" => adam, "acc_ind" => acc_ind, "hyp" => hyp]
 #save("/homes/xlu/Documents/RelHMC-group/xiaoyu/plots/wk1/Adam_my.jld","Adam_my",Adam_my)
-subplot(221)
+subplot(121)
 for i=1:10
 plot(adam[i][1],color="blue",linestyle="--",alpha=0.5)
 plot(acc_ind[i][1],color="red",linestyle="--",alpha=0.5)
@@ -111,7 +111,7 @@ end
 plot(adam_mean_train,color="blue",label="Adam")
 plot(my_mean_train,color="red",label="zero temp")
 legend(loc="3");title("training set")
-subplot(222)
+subplot(122)
 for i=1:10
 plot(adam[i][2],color="blue",linestyle="--",alpha=0.5)
 plot(acc_ind[i][2],color="red",linestyle="--",alpha=0.5)
@@ -120,7 +120,7 @@ plot(adam_mean_test,color="blue",label="Adam")
 plot(my_mean_test,color="red",label="zero temp")
 legend(loc="3");title("test set")
 suptitle("MNIST with 1 hidden layer and 100 hidden units")
-subplot(223)
+subplot(121)
 for i=1:10
 plot(adam[i][1],color="blue",linestyle="--",alpha=0.5)
 plot(acc_ind[i][1],color="red",linestyle="--",alpha=0.5)
@@ -128,8 +128,8 @@ end
 plot(adam_mean_train,color="blue",label="Adam")
 plot(my_mean_train,color="red",label="zero temp")
 legend(loc="3");title("training set")
-ylim([0.95,1])
-subplot(224)
+ylim([0.994,1])
+subplot(122)
 for i=1:10
 plot(adam[i][2],color="blue",linestyle="--",alpha=0.5)
 plot(acc_ind[i][2],color="red",linestyle="--",alpha=0.5)
@@ -157,7 +157,7 @@ acctest_rt=reshape(acctest_rt,3,4,4)
 
 ##Adam
 x=deepcopy(y)
-sadam=AdamState(x)
+sadam=AdamState(x,stepsize=0.005)
 result_adam=myrun(sadam,dm)
 x=deepcopy(y)
 sadagrad=AdagradState(x)
