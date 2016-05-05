@@ -95,58 +95,6 @@ end
     return(ESS/num_chain)
 end
 
-@everywhere n1,n2=7,9
-@everywhere avec = exp(linspace(-1,0,n1))
-@everywhere epsvec = exp(linspace(-3,0.5,n2))
-@everywhere cvec = exp(linspace(-1,0,n1))
-@everywhere t=Iterators.product(avec,epsvec)
-@everywhere t1=Iterators.product(cvec,epsvec)
-@everywhere myt=Array(Any,n1*n2);
-@everywhere it=1;
-@everywhere for prod in t
-	myt[it]=prod;
-    it+=1;
-end
-@everywhere myt1=Array(Any,n1*n2);
-@everywhere it=1;
-@everywhere for prod in t1
-	myt1[it]=prod;
-    it+=1;
-end
-ESS = SharedArray(Float64,n1*n2)
-@sync @parallel for i=1:n1*n2
-	a,eps=myt[i]
-	c=a/eps
-	ESS[i] = ESS_func(RelHMCState(zeros(2),stepsize=eps,niters=50,mass=0.5,c=c),dm)
-end
-ESS=reshape(ESS,n1,n2)
-
-ESS1 = SharedArray(Float64,n1*n2)
-@sync @parallel for i=1:n1*n2
-	c,eps=myt1[i]
-	ESS1[i] = ESS_func(RelHMCState(zeros(2),stepsize=eps,niters=50,mass=0.5,c=c),dm)
-end
-
-
-ESS1=reshape(ESS1,n1,n2)
-	
-fig = figure("pyplot_surfaceplot")
-ax = fig[:add_subplot](1,2,1) 
-cp = ax[:contour](epsvec, cvec, ESS, linewidth=2.0) 
-ax[:clabel](cp, inline=1, fontsize=10) 
-xscale("log");yscale("log")
-xlabel("stepsize"); ylabel("stepsize*c")
-title("contour plot of ESS, banana example")
-ax1 = fig[:add_subplot](1,2,2) 
-cp = ax1[:contour](epsvec, cvec, ESS1, linewidth=2.0) 
-ax1[:clabel](cp, inline=1, fontsize=10) 
-xscale("log");yscale("log")
-xlabel("stepsize"); ylabel("c")
-title("contour plot of ESS, banana example")
-
-#banana_ESS=["ESS" => ESS, "ESS1" => ESS1, "burnin" => 1000, "num_iterations" => 1000,"avec" => avec, "epsvec" => epsvec, "cvec" => cvec]
-#save("/homes/xlu/Documents/RelHMC-group/xiaoyu/plots/wk1/banana_ESS.jld","banana_ESS",banana_ESS)
-banana_ESS = load("/homes/xlu/Documents/RelHMC-group/xiaoyu/plots/wk1/banana_ESS.jld")
 ##stein discrepancy
 #optimal parameters
 #big stepsize, HMC cannot explore 

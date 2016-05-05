@@ -1,15 +1,12 @@
 @everywhere push!(LOAD_PATH,"/homes/xlu/Documents/RelHMC-group/src")
 @everywhere push!(LOAD_PATH,"/homes/xlu/Documents/RelHMC-group/xiaoyu/models/")
-#@everywhere push!(LOAD_PATH,"C:\\Users\\Xiaoyu Lu\\Documents\\RelHMC-group\\xiaoyu\\src")
-#@everywhere push!(LOAD_PATH,"C:\\Users\\Xiaoyu Lu\\Documents\\RelHMC-group\\xiaoyu\\models")
 @everywhere using SGMCMC
 @everywhere using DataModel
 @everywhere using LogisticRegression
-#@everywhere using PyPlot
-@everywhere import Lora.ess
-@everywhere import Distributions.MvNormal
+@everywhere using Lora.ess
 @everywhere using JLD
 @everywhere using Iterators
+#@everywhere import Distributions.MvNormal
 #@everywhere wk = "/data/greypartridge/oxwasp/oxwasp14/xlu/RelHMC/LR_stepsize/"
 #@everywhere wk = "/homes/xlu/Documents/RelHMC-group/xiaoyu/plots/wk12/LR_cvec/"
 
@@ -19,9 +16,10 @@
 @everywhere C = eye(d);
 @everywhere Cinv = inv(C)
 #@everywhere beta = reshape(rand(MvNormal(zeros(d),C)),(d,1))
-@everywhere beta = load("/homes/xlu/Documents/RelHMC-group/xiaoyu/examples/LR_param.jld")["LR_param"]["beta"]
-@everywhere x = load("/homes/xlu/Documents/RelHMC-group/xiaoyu/examples/LR_param.jld")["LR_param"]["x"]
-@everywhere y = load("/homes/xlu/Documents/RelHMC-group/xiaoyu/examples/LR_param.jld")["LR_param"]["y"]
+@everywhere dict = load("/homes/xlu/Documents/RelHMC-group/xiaoyu/examples/LR_param.jld")["LR_param"]
+@everywhere beta = dict["beta"]
+@everywhere x = dict["x"]
+@everywhere y = dict["y"]
 #=LR_param=["beta" => beta, "x" => x, "y" => y,
 "beta" => beta, "x" => x, "y" => y,"cvec" => cvec]
 save("/homes/xlu/Documents/RelHMC-group/xiaoyu/examples/LR_param.jld","LR_param",LR_param)
@@ -62,7 +60,7 @@ axe[2][:legend](loc="best")
 suptitle("$d-d logistic regression")
 =#
 
-#=
+
 @everywhere begin
 cd("/homes/xlu/Documents/RelHMC-group/stein_discrepancy/") 
 include("src/startup.jl")
@@ -91,42 +89,36 @@ end
 
 #stein discrepancy vs stepsize
 @everywhere stepsizevec = exp(linspace(-5,0,16))   #exp(linspace(0.1,2,8))  #just for thermostats 
-#@everywhere c=0.07
-samples,rsamples,srsamples,srnhtsamples = [SharedArray(Float64,num_iter,d,num_chain*length(stepsizevec)) for i=1:4]
+samples,rsamples,srnhtsamples_ind,srnhtsamples = [SharedArray(Float64,num_iter,d,num_chain*length(stepsizevec)) for i=1:4]
 #ssamples,snhtsamples = [SharedArray(Float64,num_iter,d,num_chain*length(stepsizevec)) for i=1:2]
 @sync @parallel for i=1:length(stepsizevec)
 	 for j=1:num_chain
-		#samples[:,:,(i-1)*num_chain+j] = myrun(HMCState(zeros(d),stepsize=stepsizevec[i],niters=L,mass=mass),dm,num_iterations=num_iter)
-		rsamples[:,:,(i-1)*num_chain+j] = myrun(RelHMCState(zeros(d),stepsize=stepsizevec[i],niters=L,mass=mass,c=0.01/stepsizevec[i]),dm,num_iterations=num_iter)
-		#srsamples[:,:,(i-1)*num_chain+j] = myrun(SGRelHMCState(zeros(d),stepsize=stepsizevec[i],niters=L,mass=[mass],c=[c]),dm,num_iterations=num_iter)
-		#srnhtsamples[:,:,(i-1)*num_chain+j] = myrun(SGNHTRelHMCState(zeros(d),stepsize=stepsizevec[i],niters=L,mass=[mass],c=[c]),dm,num_iterations=num_iter)
+		#srsamples[:,:,(i-1)*num_chain+j] = myrun(SGRelHMCState(zeros(d),stepsize=stepsizevec[i],niters=L,mass=[mass],c=[0.01/stepsizevec[i]]),dm,num_iterations=num_iter)
+		srnhtsamples[:,:,(i-1)*num_chain+j] = myrun(SGNHTRelHMCState(zeros(d),stepsize=stepsizevec[i],niters=L,mass=[mass],c=[0.01/stepsizevec[i]],independent_momenta=false),dm,num_iterations=num_iter)
+		srnhtsamples_ind[:,:,(i-1)*num_chain+j] = myrun(SGNHTRelHMCState(zeros(d),stepsize=stepsizevec[i],niters=L,mass=[mass],c=[0.01/stepsizevec[i]],independent_momenta=true),dm,num_iterations=num_iter)
 		#ssamples[:,:,(i-1)*num_chain+j] = myrun(SGHMCState(zeros(d),stepsize=stepsizevec[i],niters=L,mass=[mass]),dm,num_iterations=num_iter)
 		#snhtsamples[:,:,(i-1)*num_chain+j] = myrun(SGNHTHMCState(zeros(d),stepsize=stepsizevec[i],niters=L,mass=[mass]),dm,num_iterations=num_iter)
 	end
 end
 
 idx=1:num_iter
-jobs,rjobs,srjobs,srnhtjobs=[],[],[],[];
-sjobs,snhtjobs=[],[]
+srnhtjobs_ind,srnhtjobs=[],[]
 for i=1:num_chain*length(stepsizevec)
-	jobs=[jobs,["samples"=>samples[idx,:,i]]]
-	rjobs=[rjobs,["samples"=>rsamples[idx,:,i]]]
+	#sjobs=[sjobs,["samples"=>ssamples[idx,:,i]]]
+	#snhtjobs=[snhtjobs,["samples"=>snhtsamples[idx,:,i]]]
+	srnhtjobs=[srnhtjobs,["samples"=>srnhtsamples[idx,:,i]]]
+	srnhtjobs_ind=[srnhtjobs_ind,["samples"=>srnhtsamples_ind[idx,:,i]]]
 end
-result=pmap(eval_logisticgp,jobs)
-stein = reshape(float(result),num_chain,length(stepsizevec))
-result_r=pmap(eval_logisticgp,rjobs)
-stein_r = reshape(float(result_r),num_chain,length(stepsizevec))
 
+#result_s=pmap(eval_logisticgp,sjobs)
+#stein_s = reshape(float(result_s),num_chain,length(stepsizevec))
+result_srnht=pmap(eval_logisticgp,srnhtjobs)
+stein_srnht = reshape(float(result_srnht),num_chain,length(stepsizevec))
+result_srnht_ind=pmap(eval_logisticgp,srnhtjobs_ind)
+stein_srnht_ind = reshape(float(result_srnht_ind),num_chain,length(stepsizevec))
 
-LR_stein=["stein" => stein, "stein_r" => stein_r, "burnin" => 1000, "num_iterations" => 1000,"c" => 0.07, "stepsizevec" => stepsizevec]
-save("/homes/xlu/Documents/RelHMC-group/xiaoyu/plots/wk1/LR_stein.jld","LR_stein",LR_stein)
-LR_stein_reparam=["stein" => stein, "stein_r" => stein_r, "burnin" => 1000, "num_iterations" => 1000,"c*stepsize" => 0.01, "stepsizevec" => stepsizevec]
-save("/homes/xlu/Documents/RelHMC-group/xiaoyu/plots/wk1/LR_stein_reparam.jld","LR_stein_reparam",LR_stein_reparam)
-stein = load("/homes/xlu/Documents/RelHMC-group/xiaoyu/plots/wk1/LR_stein_reparam.jld")["LR_stein_reparam"]["stein"]
-stein_r = load("/homes/xlu/Documents/RelHMC-group/xiaoyu/plots/wk1/LR_stein_reparam.jld")["LR_stein_reparam"]["stein_r"]
-stepsizevec = load("/homes/xlu/Documents/RelHMC-group/xiaoyu/plots/wk1/LR_stein_reparam.jld")["LR_stein_reparam"]["stepsizevec"]
-
-=#
+LR_stein_ind=["stein_srnht" => stein_srnht, "stein_srnht_ind" => stein_srnht_ind, "burnin" => 1000, "num_iterations" => 1000,"c*stepsize" => 0.01, "stepsizevec" => stepsizevec]
+save("/homes/xlu/Documents/RelHMC-group/xiaoyu/plots/wk1/LR_stein_ind.jld","LR_stein_ind",LR_stein_ind)
 
 
 #vs stepsize
@@ -140,14 +132,14 @@ stein_s = reshape(float([ sjobs[i]["stein_discrepancys"][1] for i=1:length(sjobs
 
 for i=1:num_chain
 	plot(log(stepsizevec),log(stein[i,:][:]),linestyle="--",color="green",alpha=0.5)
-	plot(log(stepsizevec),log(stein_s[i,:][:]),linestyle="--",color="purple",alpha=0.5)
-	plot(log(stepsizevec),log(stein_snht[i,:][:]),linestyle="--",color="blue",alpha=0.5)
+	#plot(log(stepsizevec),log(stein_s[i,:][:]),linestyle="--",color="purple",alpha=0.5)
+	#plot(log(stepsizevec),log(stein_snht[i,:][:]),linestyle="--",color="blue",alpha=0.5)
 	plot(log(stepsizevec),log(stein_r[i,:][:]),linestyle="--",color="red",alpha=0.5)
 	plot(log(stepsizevec),log(stein_sr[i,:][:]),linestyle="--",color="yellow",alpha=0.5)
 	plot(log(stepsizevec),log(stein_srnht[i,:][:]),linestyle="--",color="pink",alpha=0.5)
 end
-plot(stepsizevec,mean(stein_s,1)',label="stochastic HMC",marker="o",color="purple")
-plot(stepsizevec,mean(stein_snht,1)',label="stochastic thermostats HMC",marker="o",color="blue")
+#plot(stepsizevec,mean(stein_s,1)',label="stochastic HMC",marker="o",color="purple")
+#plot(stepsizevec,mean(stein_snht,1)',label="stochastic thermostats HMC",marker="o",color="blue")
 plot(stepsizevec,mean(stein_sr,1)',label="stochastic Rel HMC",marker="o",color="yellow")
 plot(stepsizevec,mean(stein_srnht,1)',label="stochastic thermostats Rel HMC",marker="o",color="pink")
 plot(stepsizevec,mean(stein,1)',label="HMC",marker="o",color="green")
@@ -159,7 +151,7 @@ legend()
 =#
 
 ###contour plot ESS
-@everywhere function ESS_func(s::SamplerState,dm::AbstractDataModel;num_iterations=50000,burnin=5000,num_chain=20)
+@everywhere function ESS_func(s::SamplerState,dm::AbstractDataModel;num_iterations=10000,burnin=5000,num_chain=20)
 	ESS = 0;
 	for k=1:num_chain
 		grad = getgrad(dm)
@@ -180,10 +172,10 @@ legend()
 end
 
 
-@everywhere n1,n2=7,9
-@everywhere avec = exp(linspace(-3,0,n1))
-@everywhere epsvec = exp(linspace(-5,-1,n2))
-@everywhere cvec = exp(linspace(-3,0,n1))
+@everywhere n1,n2=40,20
+@everywhere avec = exp(linspace(-1,2,n1))
+@everywhere epsvec = exp(linspace(-3,0.5,n2))
+@everywhere cvec = exp(linspace(-1,0,n1))
 @everywhere t=Iterators.product(avec,epsvec)
 @everywhere t1=Iterators.product(cvec,epsvec)
 @everywhere myt=Array(Any,n1*n2);

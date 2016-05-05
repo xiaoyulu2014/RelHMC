@@ -28,8 +28,8 @@ function MochaSGMCMCDataModel(
   ntrain::Int = length(datac),
   batchsize::Int = 100,
   temperature::Float64 = 1.0,
-  do_shuffle::Bool = true,
-  do_accuracy::Bool = false,
+  do_shuffle::Bool = false,
+  do_accuracy::Bool = true,
   do_predprob::Bool = false
   )
 
@@ -53,8 +53,8 @@ end
 
 function DataModel.getllik(dms::MochaSGMCMCDataModel)
     function llik(x)
-        @assert dms.ntrain == dms.batch_size
-        (accuracy, loglikelihood) = MochaWrapper2.evaluateTestNN(dms.mochaNet, x, dms.ntrain)
+        #@assert dms.ntrain == dms.batch_size
+        (accuracy, loglikelihood) = MochaWrapper2.evaluateTestNN(dms.mochaNet, x, dms.batchsize)
         return loglikelihood
     end
 end
